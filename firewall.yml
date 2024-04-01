@@ -1,0 +1,79 @@
+---
+- name: Setting up Firewall
+  hosts: all
+  become: true
+  vars:
+    firewall_rules:
+      - { name: 'Allow SSH', rule 'port 22/tcp', state: 'present'}
+      - { name: 'Allow HTTP', rule 'port 80/tcp', state: 'present'}
+      - { name: 'Allow HTTPS', rule 'port 443/tcp', state: 'present'}
+    ubuntu_packages:
+      - ufw
+    centos_packages:
+      - firewalld
+
+
+  tasks:
+    - name: Install firewall packages on Ubuntu
+      ansible.builtin.apt:
+        name: "{{ ubuntu_packages }}"
+        state: present
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Install firewall packages on CentOS
+      ansible.builtin.yum:
+        name: "{{ centos_packages }}"
+        state: present
+      when: ansible_distribution == 'CentOS'
+
+    - name: Enable firewall on Ubuntu
+      ansible.builtin.service:
+        name: ufw
+        state: started
+        enabled: true
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Enable firewall on CentOS
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: true
+      when: ansible_distribution == 'CentOS'
+
+    - name: Configure firewall rules on Ubuntu
+      ufw:
+        rule: allow
+        state: enabled
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Configure firewall rules on CentOS
+      firewalld:
+        zone: public
+        service: ssh
+        state: enabled
+      when: ansible_distribution == 'CentOS'
+
+
+    - name: Check if firewall service is running on Ubuntu
+      ansible.builtin.service:
+        name: ufw
+      register: ufw_status
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Check if firewall service is running on CentOS
+      ansible.builtin.service:
+        name: firewalld
+      register: firewalld_status
+      when: ansible_distribution == 'CentOS'
+
+
+    - name: Verify firewall status on Ubuntu
+      debug:
+        msg: "Firewall status: {{ ufw_status.status }}"
+      when: ansible_distribution == 'Ubuntu'
+
+    - name: Verify firewall status on CentOS
+      debug:                 
+        msg: "Firewall status: {{ firewalld_status.status }}"
+      when: ansible_distribution == 'CentOS'
+
